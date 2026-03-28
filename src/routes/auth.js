@@ -40,12 +40,12 @@ router.post('/register', async (req, res) => {
     [phone]
   );
   if (!rows.length || rows[0].code !== smsCode)
-    return res.status(400).json({ error: 'Неверный или устаревший код' });
+    return res.status(400).json({ error: 'Неверный или устаревший код. Запросите SMS повторно' });
 
   // Проверяем что номер не занят
   const exists = await db.query('SELECT id FROM users WHERE phone=$1', [phone]);
   if (exists.rows.length)
-    return res.status(400).json({ error: 'Номер уже зарегистрирован' });
+    return res.status(400).json({ error: 'Этот номер уже зарегистрирован. Попробуйте войти' });
 
   const hash = await bcrypt.hash(password, 10);
   const result = await db.query(
