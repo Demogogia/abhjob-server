@@ -11,6 +11,8 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+app.set('trust proxy', 1); // Railway сидит за reverse proxy
+
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true,
