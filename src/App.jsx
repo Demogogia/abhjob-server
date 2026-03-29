@@ -794,7 +794,7 @@ function HamburgerMenu({currentUser,onNav,onLogout}){
         </button>
         {currentUser&&(<div style={{padding:"14px 22px",borderBottom:"1px solid #f3f4f6",
             display:"flex",alignItems:"center",gap:11}}>
-            <Avatar name={currentUser.name} photo={null} index={currentUser.id%8} size={38}/>
+            <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={38}/>
             <div>
               <div style={{fontWeight:700,fontSize:14,color:"#111"}}>{currentUser.name}</div>
               <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>
