@@ -14,6 +14,7 @@ function sendSms(phone, message) {
       psw: process.env.SMSC_PASSWORD,
       phones: phone,
       mes: message,
+      sender: 'AbhJob',
       fmt: 3, // JSON ответ
       charset: 'utf-8',
     });

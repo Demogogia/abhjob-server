@@ -11,16 +11,26 @@ const COOKIE_OPTS = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-// Валидация телефона: +7XXXXXXXXXX (11-12 цифр после +)
+// Нормализация телефона: 8XXXXXXXXXX → +7XXXXXXXXXX, +7XXXXXXXXXX → без изменений
+function normalizePhone(p) {
+  if (typeof p !== 'string') return null;
+  const s = p.trim();
+  if (/^\+\d{10,12}$/.test(s)) return s;
+  if (/^8\d{10}$/.test(s)) return '+7' + s.slice(1);
+  return null;
+}
+
+// Валидация телефона
 function validPhone(p) {
-  return typeof p === 'string' && /^\+\d{10,12}$/.test(p.trim());
+  return normalizePhone(p) !== null;
 }
 
 // Отправить SMS код
 router.post('/sms/send', async (req, res, next) => {
   try {
-    const { phone } = req.body;
-    if (!validPhone(phone))
+    const { phone: rawPhone } = req.body;
+    const phone = normalizePhone(rawPhone);
+    if (!phone)
       return res.status(400).json({ error: 'Неверный формат номера телефона' });
 
     const code = generateCode();
@@ -30,10 +40,10 @@ router.post('/sms/send', async (req, res, next) => {
       `INSERT INTO sms_codes(phone, code, expires_at)
        VALUES($1,$2,$3)
        ON CONFLICT(phone) DO UPDATE SET code=$2, expires_at=$3`,
-      [phone.trim(), code, expires]
+      [phone, code, expires]
     );
 
-    await sendSms(phone.trim(), `Ваш код AbhJob: ${code}`);
+    await sendSms(phone, `Ваш код AbhJob: ${code}`);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -41,12 +51,13 @@ router.post('/sms/send', async (req, res, next) => {
 // Регистрация с SMS-кодом
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, phone, password, role, smsCode } = req.body;
+    const { name, phone: rawPhone, password, role, smsCode } = req.body;
+    const phone = normalizePhone(rawPhone);
 
     // Валидация
     if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 100)
       return res.status(400).json({ error: 'Имя должно содержать от 2 до 100 символов' });
-    if (!validPhone(phone))
+    if (!phone)
       return res.status(400).json({ error: 'Неверный формат номера телефона' });
     if (!password || typeof password !== 'string' || password.length < 6 || password.length > 100)
       return res.status(400).json({ error: 'Пароль должен содержать от 6 до 100 символов' });
@@ -58,24 +69,24 @@ router.post('/register', async (req, res, next) => {
     // Проверяем SMS-код
     const { rows } = await db.query(
       `SELECT * FROM sms_codes WHERE phone=$1 AND expires_at > NOW()`,
-      [phone.trim()]
+      [phone]
     );
     if (!rows.length || rows[0].code !== String(smsCode))
       return res.status(400).json({ error: 'Неверный или устаревший код. Запросите SMS повторно' });
 
     // Проверяем что номер не занят
-    const exists = await db.query('SELECT id FROM users WHERE phone=$1', [phone.trim()]);
+    const exists = await db.query('SELECT id FROM users WHERE phone=$1', [phone]);
     if (exists.rows.length)
       return res.status(400).json({ error: 'Этот номер уже зарегистрирован. Попробуйте войти' });
 
     const hash = await bcrypt.hash(password, 12);
     const result = await db.query(
       `INSERT INTO users(name,phone,password,role) VALUES($1,$2,$3,$4) RETURNING id,name,phone,role,registered_at`,
-      [name.trim(), phone.trim(), hash, role]
+      [name.trim(), phone, hash, role]
     );
 
     const user = result.rows[0];
-    await db.query('DELETE FROM sms_codes WHERE phone=$1', [phone.trim()]);
+    await db.query('DELETE FROM sms_codes WHERE phone=$1', [phone]);
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, COOKIE_OPTS).json({ user });
@@ -85,14 +96,15 @@ router.post('/register', async (req, res, next) => {
 // Вход
 router.post('/login', async (req, res, next) => {
   try {
-    const { phone, password } = req.body;
+    const { phone: rawPhone, password } = req.body;
+    const phone = normalizePhone(rawPhone);
 
-    if (!validPhone(phone))
+    if (!phone)
       return res.status(400).json({ error: 'Неверный формат номера телефона' });
     if (!password || typeof password !== 'string')
       return res.status(400).json({ error: 'Введите пароль' });
 
-    const { rows } = await db.query('SELECT * FROM users WHERE phone=$1', [phone.trim()]);
+    const { rows } = await db.query('SELECT * FROM users WHERE phone=$1', [phone]);
     if (!rows.length)
       return res.status(400).json({ error: 'Неверный номер или пароль' });
 
@@ -138,12 +150,13 @@ router.patch('/me', async (req, res, next) => {
     const { name, phone2 } = req.body;
     if (name !== undefined && (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 100))
       return res.status(400).json({ error: 'Имя должно содержать от 2 до 100 символов' });
-    if (phone2 !== undefined && phone2 !== '' && !validPhone(phone2))
+    const normPhone2 = phone2 !== undefined && phone2 !== '' ? normalizePhone(phone2) : '';
+    if (phone2 !== undefined && phone2 !== '' && !normPhone2)
       return res.status(400).json({ error: 'Неверный формат доп. телефона' });
 
     const { rows } = await db.query(
       'UPDATE users SET name=$1, phone2=$2 WHERE id=$3 RETURNING id,name,phone,phone2,role,registered_at',
-      [name?.trim() || '', phone2?.trim() || '', payload.id]
+      [name?.trim() || '', normPhone2 || '', payload.id]
     );
     res.json({ user: rows[0] });
   } catch (e) { next(e); }
