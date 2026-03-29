@@ -1292,7 +1292,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
               <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#374151"}}>
                 <input type="checkbox" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)}
                   style={{width:16,height:16,cursor:"pointer",accentColor:"#2563eb"}}/>
-                Запомнить меня на 30 дней
+                Запомнить меня
               </label>
             )}
 
