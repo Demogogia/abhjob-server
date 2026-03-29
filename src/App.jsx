@@ -3153,12 +3153,7 @@ export default function App(){
             <button onClick={()=>navigate("profile")} style={{
               display:"flex",alignItems:"center",gap:8,padding:"6px 12px",
               background:"#F5F8FB",borderRadius:10,border:"1px solid #f3f4f6",cursor:"pointer"}}>
-              <div style={{width:28,height:28,borderRadius:"50%",
-                background:COLORS[currentUser.id%8],flexShrink:0,
-                display:"flex",alignItems:"center",justifyContent:"center",
-                color:"#fff",fontSize:11,fontWeight:700}}>
-                {getInitials(currentUser.name)}
-              </div>
+              <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={28}/>
               {!isMobile&&<span style={{fontSize:13,fontWeight:600,color:"#374151"}}>
                 {currentUser.name.split(" ")[0]}
               </span>}
