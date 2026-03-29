@@ -1012,6 +1012,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
     }finally{setSubmitting(false);}
   };
 
+  useEffect(()=>{if(smsCode.length===6)verifySms();},[smsCode]);
   const verifySms=async()=>{
     setMsg("");
     try{
