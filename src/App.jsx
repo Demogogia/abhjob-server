@@ -299,12 +299,6 @@ const FAQ_ITEMS = [
     ]},
 ];
 
-// ─── SMS SERVICE ──────────────────────────────────────────────────────────────
-async function sendSmsCode(phone, code){
-  // REPLACE WITH REAL SMS API (SMSC.ru, SMS.ru etc.)
-  console.log(`[SMS DEV] Код для ${phone}: ${code}`);
-  return true;
-}
 
 // ─── API TRANSFORMS ──────────────────────────────────────────────────────────
 function mapWorker(w){
@@ -2876,9 +2870,7 @@ export default function App(){
             setUsers(uRes.map(mapUser));
           }
         }
-      }catch(e){
-        console.error("Init error:",e);
-      }
+      }catch(e){}
     };
     init();
   },[]);
