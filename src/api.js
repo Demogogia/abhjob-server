@@ -16,7 +16,7 @@ export const api = {
   // Auth
   sendSms:    phone =>              req('POST', '/api/auth/sms/send', { phone }),
   register:   body =>               req('POST', '/api/auth/register', body),
-  login:      (phone, password) =>  req('POST', '/api/auth/login', { phone, password }),
+  login:      (phone, password, rememberMe) =>  req('POST', '/api/auth/login', { phone, password, rememberMe }),
   logout:     () =>                 req('POST', '/api/auth/logout'),
   me:         () =>                 req('GET',  '/api/auth/me'),
   updateMe:   body =>               req('PATCH', '/api/auth/me', body),

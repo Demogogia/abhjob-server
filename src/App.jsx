@@ -945,6 +945,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
   const [phone,setPhone]=useState("+7940");
   const [password,setPassword]=useState("");
   const [showPass,setShowPass]=useState(false);
+  const [rememberMe,setRememberMe]=useState(true);
   // worker profile fields (only for seeker)
   const [wp,setWp]=useState({
     category:"",gender:"",profession:"",experience:"",city:"",age:"",
@@ -969,7 +970,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
     if(phone.length<12){setMsg("Введите полный номер телефона (+7940XXXXXXX)");return;}
     if(!password){setMsg("Введите пароль");return;}
     try{
-      const{user}=await api.login(phone,password);
+      const{user}=await api.login(phone,password,rememberMe);
       onAuth(mapUser(user));
     }catch(e){
       if(e.message?.includes("Неверный"))
@@ -1286,6 +1287,14 @@ function AuthModal({onAuth,onClose,users,setUsers}){
               </div>
               {err.password&&<span style={{fontSize:12,color:"#dc2626"}}>{err.password}</span>}
             </div>
+
+            {tab==="login"&&(
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#374151"}}>
+                <input type="checkbox" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)}
+                  style={{width:16,height:16,cursor:"pointer",accentColor:"#2563eb"}}/>
+                Запомнить меня на 30 дней
+              </label>
+            )}
 
             {msg&&<div style={{background:"#fef2f2",borderRadius:8,padding:"10px 14px",
               color:"#dc2626",fontSize:13,display:"flex",gap:8,alignItems:"center"}}>
