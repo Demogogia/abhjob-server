@@ -1404,12 +1404,24 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
               {" · "}с {currentUser.registeredAt}
             </div>
             {currentUser.role==="admin"&&(
-              <button onClick={()=>exportToExcel(users,workers,orders)}
-                style={{marginTop:14,background:"#16a34a",color:"#fff",border:"none",
-                  borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
-                  fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
-                <Download size={15}/>Скачать базу (.xlsx)
-              </button>
+              <div style={{display:"flex",gap:8,marginTop:14,flexWrap:"wrap"}}>
+                <button onClick={()=>exportToExcel(users,workers,orders)}
+                  style={{background:"#16a34a",color:"#fff",border:"none",
+                    borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
+                    fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
+                  <Download size={15}/>Скачать базу (.xlsx)
+                </button>
+                <button onClick={async()=>{
+                  const a=document.createElement("a");
+                  a.href=`${import.meta.env.VITE_API_URL||"https://abhjob-server-production.up.railway.app"}/api/admin/backup`;
+                  a.download="";document.body.appendChild(a);a.click();a.remove();
+                }}
+                  style={{background:"#2563eb",color:"#fff",border:"none",
+                    borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
+                    fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
+                  <Download size={15}/>Бэкап БД (.json)
+                </button>
+              </div>
             )}
           </div>
           <Avatar name={currentUser.name} photo={null} index={currentUser.id%8} size={60}/>
