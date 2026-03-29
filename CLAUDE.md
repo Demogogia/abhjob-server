@@ -16,7 +16,7 @@ NS-серверы на reg.ru изменены на Cloudflare:
 - `asa.ns.cloudflare.com`
 - `harley.ns.cloudflare.com`
 
-**Осталось сделать**: после обновления DNS (1–24 часа) — зайти в Cloudflare Workers → Settings → Domains & Routes → Add Custom Domain → `abhjob.ru`
+**Домен подключён и работает** — abhjob.ru открывается через Cloudflare Workers. ✓
 
 ## Что было сделано (аудит)
 - Тихие ошибки → toast уведомления везде
