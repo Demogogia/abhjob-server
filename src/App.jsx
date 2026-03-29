@@ -2992,13 +2992,26 @@ export default function App(){
   const [workers,setWorkers]=useState(INITIAL_WORKERS);
   const [orders,setOrders]=useState([]);
   const [ratings,setRatings]=useState([]);
-  const [page,setPage]=useState("home");
+  const VALID_PAGES=["home","catalog","profile","orders","faq","privacy","terms"];
+  const pageFromPath=()=>{const p=window.location.pathname.replace(/^\//,"");return VALID_PAGES.includes(p)?p:"home";};
+  const [page,setPage]=useState(pageFromPath);
+  const navigate=key=>{setPage(key);const path=key==="home"?"/":`/${key}`;window.history.pushState({page:key},"",path);};
   const [contact,setContact]=useState(null);
   const [showWorkerForm,setShowWorkerForm]=useState(false);
   const [showAuth,setShowAuth]=useState(false);
   const [catalogSearch,setCatalogSearch]=useState("");
   const [favorites,setFavorites]=useState([]);
   const {toast,ToastContainer}=useToast();
+
+  // History API: sync browser back/forward with page state
+  useEffect(()=>{
+    const path=page==="home"?"/":`/${page}`;
+    window.history.replaceState({page},"",path);
+    const onPop=e=>{const key=e.state?.page||pageFromPath();setPage(key);};
+    window.addEventListener("popstate",onPop);
+    return()=>window.removeEventListener("popstate",onPop);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
   // Загрузка данных при старте
   useEffect(()=>{
@@ -3058,7 +3071,7 @@ export default function App(){
     }
     if(key==="auth"){setShowAuth(true);return;}
     const pages=["home","catalog","profile","orders","faq","privacy","terms"];
-    if(pages.includes(key))setPage(key);
+    if(pages.includes(key))navigate(key);
   };
   const handleOrderCreated=async(workerId)=>{
     try{
@@ -3073,7 +3086,7 @@ export default function App(){
   const handleAuth=async(user,pendingWorker)=>{
     setCurrentUser(user);
     setShowAuth(false);
-    setPage("home");
+    navigate("home");
     if(pendingWorker)setWorkers(prev=>[pendingWorker,...prev]);
     const oRes=await api.getOrders().catch(()=>[]);
     setOrders(oRes.map(mapOrder));
@@ -3086,7 +3099,7 @@ export default function App(){
     api.logout().catch(()=>{});
     setCurrentUser(null);
     setOrders([]);
-    setPage("home");
+    navigate("home");
   };
 
   const isMobile=useIsMobile();
@@ -3114,7 +3127,7 @@ export default function App(){
 
         {/* Row 1 — brand bar */}
         <div style={{borderBottom:"1px solid #f3f4f6"}}>
-          <button onClick={()=>setPage("home")} style={{
+          <button onClick={()=>navigate("home")} style={{
             display:"flex",alignItems:"center",justifyContent:"center",gap:10,
             width:"100%",padding:"9px 16px",background:"none",border:"none",cursor:"pointer"}}>
             {/* Logo icon — blue on white */}
@@ -3137,7 +3150,7 @@ export default function App(){
               <User size={14}/>Войти
             </button>
           ):(
-            <button onClick={()=>setPage("profile")} style={{
+            <button onClick={()=>navigate("profile")} style={{
               display:"flex",alignItems:"center",gap:8,padding:"6px 12px",
               background:"#F5F8FB",borderRadius:10,border:"1px solid #f3f4f6",cursor:"pointer"}}>
               <div style={{width:28,height:28,borderRadius:"50%",
@@ -3157,7 +3170,7 @@ export default function App(){
       {/* Pages */}
       <div key={page} >
       {page==="home"&&<LandingPage onNavigate={handleNav} workerCount={workers.length}
-        onSearch={q=>{setCatalogSearch(q);setPage("catalog");}}/>}
+        onSearch={q=>{setCatalogSearch(q);navigate("catalog");}}/>}
       {page==="catalog"&&<CatalogPage workers={workers} ratings={ratings} onContact={setContact}
         initialSearch={catalogSearch} favorites={favorites} onToggleFav={toggleFavorite}/>}
       {page==="profile"&&currentUser&&(
@@ -3199,7 +3212,7 @@ export default function App(){
           </div>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             {[["privacy","Конфиденциальность"],["terms","Соглашение"],["faq","FAQ"]].map(([key,label])=>(
-              <button key={key} onClick={()=>setPage(key)} style={{background:"none",border:"none",
+              <button key={key} onClick={()=>navigate(key)} style={{background:"none",border:"none",
                 cursor:"pointer",fontSize:13,color:"#9ca3af",fontFamily:"inherit",padding:0}}>
                 {label}
               </button>
