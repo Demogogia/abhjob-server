@@ -13,6 +13,16 @@ const app = express();
 
 app.set('trust proxy', 1); // Railway сидит за reverse proxy
 
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true,
@@ -38,9 +48,18 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: 'Слишком много запросов к админ-панели.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use('/api/auth/sms/send', smsLimiter);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/register', loginLimiter);
+app.use('/api/admin', adminLimiter);
 
 app.use('/api/auth',    require('./src/routes/auth'));
 app.use('/api/workers', require('./src/routes/workers'));
@@ -52,7 +71,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Глобальный обработчик ошибок — всегда возвращает JSON
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error(`[${new Date().toISOString()}] ${req.method} ${req.path} — ${err.message}`);
   res.status(500).json({ error: 'Внутренняя ошибка сервера' });
 });
 

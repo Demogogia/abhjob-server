@@ -5,7 +5,6 @@ function sendSms(phone, message) {
   return new Promise((resolve, reject) => {
     // В режиме разработки — только логируем
     if (!process.env.SMSC_LOGIN || !process.env.SMSC_PASSWORD) {
-      console.log(`[SMS DEV] ${phone}: ${message}`);
       return resolve({ ok: true, dev: true });
     }
 

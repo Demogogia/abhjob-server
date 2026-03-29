@@ -34,7 +34,7 @@ router.get('/', requireAuth, async (req, res, next) => {
 router.post('/', requireAuth, async (req, res, next) => {
   try {
     const worker_id = parseInt(req.body.worker_id);
-    if (!worker_id || isNaN(worker_id))
+    if (isNaN(worker_id) || worker_id <= 0)
       return res.status(400).json({ error: 'Укажите ID специалиста' });
 
     const employer_id = req.user.id;

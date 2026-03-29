@@ -6,14 +6,13 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 router.get('/', async (req, res, next) => {
   try {
     const { rows: workers } = await db.query(
-      `SELECT w.*, u.phone as user_phone
+      `SELECT w.*
        FROM workers w
-       LEFT JOIN users u ON u.id = w.posted_by
        WHERE w.approved = true
        ORDER BY w.created_at DESC`
     );
     const { rows: services } = await db.query('SELECT * FROM services');
-    const result = workers.map(w => ({
+    const result = workers.map(({ posted_by, ...w }) => ({
       ...w,
       services: services.filter(s => s.worker_id === w.id),
     }));

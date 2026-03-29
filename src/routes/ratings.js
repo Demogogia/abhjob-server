@@ -25,9 +25,9 @@ router.post('/', requireAuth, async (req, res, next) => {
     const score = parseInt(req.body.score);
     const employer_id = req.user.id;
 
-    if (!worker_id || isNaN(worker_id))
+    if (isNaN(worker_id) || worker_id <= 0)
       return res.status(400).json({ error: 'Неверный ID работника' });
-    if (!order_id || isNaN(order_id))
+    if (isNaN(order_id) || order_id <= 0)
       return res.status(400).json({ error: 'Неверный ID заказа' });
     if (!score || score < 1 || score > 5)
       return res.status(400).json({ error: 'Оценка должна быть от 1 до 5' });
