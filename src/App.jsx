@@ -3150,14 +3150,23 @@ export default function App(){
               <User size={14}/>Войти
             </button>
           ):(
-            <button onClick={()=>navigate("profile")} style={{
-              display:"flex",alignItems:"center",gap:8,padding:"6px 12px",
-              background:"#F5F8FB",borderRadius:10,border:"1px solid #f3f4f6",cursor:"pointer"}}>
-              <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={28}/>
-              {!isMobile&&<span style={{fontSize:13,fontWeight:600,color:"#374151"}}>
-                {currentUser.name.split(" ")[0]}
-              </span>}
-            </button>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>navigate("profile")} style={{
+                display:"flex",alignItems:"center",gap:8,padding:"6px 10px",
+                background:"none",borderRadius:10,border:"none",cursor:"pointer"}}>
+                <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={28}/>
+                {!isMobile&&<span style={{fontSize:13,fontWeight:600,color:"#374151"}}>
+                  {currentUser.name.split(" ")[0]}
+                </span>}
+              </button>
+              <button onClick={handleLogout} style={{
+                display:"flex",alignItems:"center",gap:5,padding:"6px 10px",
+                border:"1px solid #fee2e2",borderRadius:10,background:"#fff5f5",
+                cursor:"pointer",fontSize:12,color:"#dc2626",fontFamily:"inherit",fontWeight:600}}>
+                <LogOut size={13}/>
+                {!isMobile&&"Выйти"}
+              </button>
+            </div>
           )}
         </div>
       </header>
