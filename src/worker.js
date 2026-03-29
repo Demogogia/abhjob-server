@@ -10,20 +10,11 @@ export default {
       const headers = new Headers(request.headers);
       headers.delete('host');
 
-      const proxyReq = new Request(target, {
+      return fetch(new Request(target, {
         method: request.method,
         headers,
         body: ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
-        redirect: 'follow',
-      });
-
-      const response = await fetch(proxyReq);
-
-      // Forward response as-is (including Set-Cookie)
-      return new Response(response.body, {
-        status: response.status,
-        headers: response.headers,
-      });
+      }));
     }
 
     // Serve static assets for everything else
