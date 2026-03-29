@@ -38,4 +38,29 @@ router.patch('/workers/:id/verify', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Полный бэкап БД в JSON
+router.get('/backup', requireAdmin, async (req, res, next) => {
+  try {
+    const [users, workers, services, orders, ratings] = await Promise.all([
+      db.query('SELECT * FROM users ORDER BY id'),
+      db.query('SELECT * FROM workers ORDER BY id'),
+      db.query('SELECT * FROM services ORDER BY id'),
+      db.query('SELECT * FROM orders ORDER BY id'),
+      db.query('SELECT * FROM ratings ORDER BY id'),
+    ]);
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      users: users.rows,
+      workers: workers.rows,
+      services: services.rows,
+      orders: orders.rows,
+      ratings: ratings.rows,
+    };
+    const filename = `abhjob-backup-${new Date().toISOString().slice(0,10)}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(backup);
+  } catch (e) { next(e); }
+});
+
 module.exports = router;
