@@ -1,30 +1,71 @@
-# АбхДжоб — контекст проекта
+# AbhJob — полный контекст проекта
 
-## Стек
-- **Фронтенд**: React + Vite, папка `C:/Users/Admin/rabota-ryadom/`
-- **Бэкенд**: Railway → `https://abhjob-server-production.up.railway.app`
-- **GitHub**: https://github.com/Demogogia/abhjob-server (ветка `main`)
-- **Домен**: `abhjob.ru` (куплен на reg.ru)
+## Стек и расположение файлов
 
-## Хостинг
-- Фронтенд на **Cloudflare Workers**
-- Рабочий URL: `fragrant-wildflower-065f.gogiademo.workers.dev`
-- Перешли с Netlify — кончились бесплатные деплои
+- **Фронтенд**: React + Vite → `C:/Users/Admin/rabota-ryadom/`
+- **Бэкенд**: Node.js/Express → `C:/Users/Admin/server/`
+- **БД**: PostgreSQL на Railway
+- **Сайт**: https://abhjob.ru
 
-## Статус домена
-NS-серверы на reg.ru изменены на Cloudflare:
-- `asa.ns.cloudflare.com`
-- `harley.ns.cloudflare.com`
+## Репозитории GitHub (аккаунт: Demogogia)
 
-**Домен подключён и работает** — abhjob.ru открывается через Cloudflare Workers. ✓
+- Фронтенд: https://github.com/Demogogia/abhjob-server ветка `main`
+- Бэкенд: https://github.com/Demogogia/abhjob-server ветка `master`
+- (Да, оба в одном репо с разными ветками — исторически так сложилось)
 
-## Что было сделано (аудит)
-- Тихие ошибки → toast уведомления везде
-- `alert()` → визуальная кнопка "Скопировано ✓"
-- Error Boundary в `main.jsx`
-- Favicon 💼 + мета-теги SEO в `index.html`
-- Loading states на всех кнопках форм
-- Debounce 300мс на поиск + `useMemo` для фильтра/сортировки
-- Бандл уменьшен с 623 КБ до 341 КБ (xlsx — lazy import)
-- Удалён мёртвый код, неиспользуемые иконки
-- Cleanup таймера SMS при размонтировании
+## Автодеплой — НЕ ДЕПЛОИТЬ ВРУЧНУЮ
+
+- `git push` в `main` → Cloudflare Workers автоматически деплоит фронтенд
+- `git push` в `master` → Railway автоматически деплоит бэкенд
+- После пуша просто сообщить пользователю что деплой пошёл автоматически
+
+## Архитектура API (важно!)
+
+Cloudflare Worker (`src/worker.js`) проксирует все `/api/*` запросы на Railway бэкенд.
+Это сделано для iOS Safari — без прокси куки блокировались как кросс-доменные (ITP).
+`src/api.js`: `BASE = ''` (пустая строка = relative URL, same-origin).
+
+## Аутентификация
+
+- JWT в httpOnly куке `SameSite=None; Secure`
+- SMS через smsc.ru при регистрации
+- "Запомнить меня" → 30 дней, без галочки → 1 день
+
+## Что сделано и работает
+
+- Аватар пользователя — загрузка, смена, отображение везде (шапка, бургер, профиль)
+- History API роутинг — кнопка "назад" в браузере работает корректно
+- Портфолио фото для работников-соискателей
+- Бэкап БД: GET /api/admin/backup
+- Rate limiting, security headers на бэкенде
+- PATCH /me обновляет только переданные поля (аватар не стирается при сохранении)
+- Кнопка "Выйти" в карточке профиля рядом с именем
+- Один блок в личном кабинете (шапка + данные объединены)
+
+## Структура личного кабинета (CabinetPage)
+
+Один белый блок:
+1. Аватар + имя + кнопка "Выйти" (в одной строке)
+2. Роль · дата регистрации
+3. Разделитель → кнопка "Редактировать" (или Сохранить/Отмена в режиме редактирования)
+4. Поля: имя, телефон, доп. телефон, роль
+
+В режиме редактирования аватар становится кликабельным (иконка карандаша).
+
+## Playwright MCP
+
+Установлен: `npm install -g @playwright/mcp`
+Добавлен в Claude Code: конфиг в `C:/Users/Admin/.claude.json`
+После перезапуска Claude Code будут доступны инструменты браузерного тестирования.
+
+## Переменные окружения Railway
+
+- `JWT_SECRET`, `CLIENT_URL=https://abhjob.ru`
+- `SMSC_LOGIN`, `SMSC_PASSWORD` (без пробелов — была проблема с пробелами)
+- `DATABASE_URL` — автоматически от Railway PostgreSQL
+
+## Правила работы
+
+- Не спрашивать лишнего — читай этот файл и действуй
+- Не деплоить вручную — только git push
+- Пользователь говорит "делай всё по порядку" — значит делать без лишних вопросов
