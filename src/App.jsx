@@ -1376,6 +1376,7 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
   const [saveErr,setSaveErr]=useState("");
   const [saving,setSaving]=useState(false);
   const [avatarLoading,setAvatarLoading]=useState(false);
+  const [avatarErr,setAvatarErr]=useState("");
   const avatarInputRef=useRef(null);
 
   // Admin: pending photo approvals
@@ -1395,6 +1396,23 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
     }finally{setSaving(false);}
   };
 
+  const handleAvatarChange=async e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setAvatarErr("");
+    setAvatarLoading(true);
+    try{
+      const compressed=await compressImage(file,400,800);
+      const{user}=await api.updateMe({avatar:compressed});
+      setCurrentUser(mapUser(user));
+    }catch(err){
+      setAvatarErr(err.message||"Не удалось загрузить фото. Попробуйте другой файл.");
+    }finally{
+      setAvatarLoading(false);
+      e.target.value="";
+    }
+  };
+
   const row=(label,val)=>(
     <div style={{display:"flex",flexDirection:"column",gap:2,padding:"11px 0",borderBottom:"1px solid #f3f4f6"}}>
       <span style={{fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
@@ -1402,104 +1420,112 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
     </div>
   );
 
+  const roleLabel=currentUser.role==="admin"?"Администратор":currentUser.role==="employer"?"Работодатель":"Работник";
+
   return(
     <div style={{maxWidth:680,margin:"0 auto",padding:m?"12px 14px":"32px 16px",boxSizing:"border-box",width:"100%",overflowX:"hidden"}}>
-      {/* Header */}
-      <div style={{background:"#fff",borderRadius:16,padding:m?"18px 16px":"28px 28px 24px",
-        boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:12}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:900,fontSize:24,color:"#111"}}>{currentUser.name}</div>
-            <div style={{color:"#9ca3af",fontSize:13,marginTop:4}}>
-              {currentUser.role==="admin"?"Администратор":
-               currentUser.role==="employer"?"Работодатель":"Работник"}
-              {" · "}с {currentUser.registeredAt}
+      {/* Combined profile card */}
+      <div style={{background:"#fff",borderRadius:16,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:12,overflow:"hidden"}}>
+
+        {/* Top: avatar + name + role */}
+        <div style={{padding:m?"18px 16px":"24px 28px",display:"flex",alignItems:"center",gap:16}}>
+          <div style={{position:"relative",flexShrink:0}}>
+            <div style={{cursor:edit?"pointer":"default",borderRadius:"50%",overflow:"hidden"}}
+              onClick={edit?()=>avatarInputRef.current?.click():undefined}>
+              <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={m?56:68}/>
             </div>
-            {currentUser.role==="admin"&&(
-              <div style={{display:"flex",gap:8,marginTop:14,flexWrap:"wrap"}}>
-                <button onClick={()=>exportToExcel(users,workers,orders)}
-                  style={{background:"#16a34a",color:"#fff",border:"none",
-                    borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
-                    fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
-                  <Download size={15}/>Скачать базу (.xlsx)
-                </button>
-                <button onClick={async()=>{
-                  const a=document.createElement("a");
-                  a.href=`${import.meta.env.VITE_API_URL||"https://abhjob-server-production.up.railway.app"}/api/admin/backup`;
-                  a.download="";document.body.appendChild(a);a.click();a.remove();
-                }}
-                  style={{background:"#2563eb",color:"#fff",border:"none",
-                    borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
-                    fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
-                  <Download size={15}/>Бэкап БД (.json)
-                </button>
+            {edit&&(
+              <div onClick={()=>avatarInputRef.current?.click()}
+                style={{position:"absolute",bottom:0,right:0,background:"#2563eb",borderRadius:"50%",
+                  width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+                <ImagePlus size={12} color="#fff"/>
               </div>
             )}
+            {avatarLoading&&<div style={{position:"absolute",inset:0,background:"rgba(255,255,255,0.75)",
+              borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:10,color:"#6b7280"}}>...</div>}
           </div>
-          <div style={{position:"relative",cursor:"pointer"}} onClick={()=>avatarInputRef.current?.click()}>
-            <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={60}/>
-            <div style={{position:"absolute",bottom:0,right:0,background:"#2563eb",borderRadius:"50%",
-              width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <ImagePlus size={11} color="#fff"/>
-            </div>
-            {avatarLoading&&<div style={{position:"absolute",inset:0,background:"rgba(255,255,255,0.7)",
-              borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>...</div>}
+          <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+            style={{display:"none"}} onChange={handleAvatarChange}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:900,fontSize:m?20:24,color:"#111",wordBreak:"break-word"}}>{currentUser.name}</div>
+            <div style={{color:"#9ca3af",fontSize:13,marginTop:3}}>{roleLabel}{" · "}с {currentUser.registeredAt}</div>
+            {avatarErr&&<div style={{fontSize:12,color:"#dc2626",marginTop:6}}>{avatarErr}</div>}
           </div>
-          <input ref={avatarInputRef} type="file" accept="image/*" style={{display:"none"}}
-            onChange={async e=>{
-              const file=e.target.files?.[0];
-              if(!file)return;
-              setAvatarLoading(true);
-              try{
-                const compressed=await compressImage(file,200,400);
-                const{user}=await api.updateMe({avatar:compressed});
-                setCurrentUser(mapUser(user));
-              }catch{}
-              setAvatarLoading(false);
-              e.target.value="";
-            }}/>
         </div>
-      </div>
 
-      {/* Personal data */}
-      <div style={{background:"#fff",borderRadius:16,padding:m?"16px":"24px 28px",
-        boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:12}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <h3 style={{margin:0,fontSize:16,fontWeight:800,color:"#111"}}>Личные данные</h3>
-          {!edit&&<button onClick={()=>setEdit(true)} style={{background:"#f3f4f6",border:"none",
-            borderRadius:8,padding:"6px 14px",fontSize:13,cursor:"pointer",fontWeight:600,color:"#374151"}}>
-            Редактировать
-          </button>}
-        </div>
-        {saved&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,
-          padding:"8px 14px",color:"#16a34a",fontSize:13,fontWeight:600,marginTop:8,marginBottom:4,
-          display:"flex",alignItems:"center",gap:7}}>
-          <CheckCircle size={15}/>Данные сохранены
-        </div>}
-        {!edit?(
-          <div>
-            {row("Имя",currentUser.name)}
-            {row("Телефон",currentUser.phone)}
-            {row("Доп. телефон",currentUser.phone2)}
-            {row("Роль",currentUser.role==="employer"?"Работодатель":currentUser.role==="admin"?"Администратор":"Работник")}
-          </div>
-        ):(
-          <div style={{display:"flex",flexDirection:"column",gap:14,marginTop:14}}>
-            <Inp label="Имя и фамилия" value={form.name}
-              onChange={e=>setForm({...form,name:e.target.value})} placeholder="Иван Иванов" required/>
-            <PhoneInp value={form.phone} onChange={v=>setForm({...form,phone:v})} label="Основной телефон"/>
-            <PhoneInp value={form.phone2} onChange={v=>setForm({...form,phone2:v})} label="Доп. телефон"/>
-            {saveErr&&<div style={{fontSize:12,color:"#dc2626"}}>{saveErr}</div>}
-            <div style={{display:"flex",gap:10}}>
-              <button onClick={()=>{setEdit(false);setSaveErr("");}} style={{flex:1,border:"1px solid #e5e7eb",
-                background:"#fff",borderRadius:10,padding:"10px",fontSize:14,cursor:"pointer"}}>Отмена</button>
-              <button onClick={save} disabled={saving} style={{flex:2,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",
-                borderRadius:10,padding:"10px",fontSize:14,cursor:saving?"not-allowed":"pointer",fontWeight:700,opacity:saving?0.7:1}}>
-                {saving?"Сохранение...":"Сохранить"}
-              </button>
-            </div>
+        {/* Admin tools */}
+        {currentUser.role==="admin"&&(
+          <div style={{padding:m?"0 16px 16px":"0 28px 16px",display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button onClick={()=>exportToExcel(users,workers,orders)}
+              style={{background:"#16a34a",color:"#fff",border:"none",
+                borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
+                fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
+              <Download size={15}/>Скачать базу (.xlsx)
+            </button>
+            <button onClick={()=>{
+              const a=document.createElement("a");
+              a.href=`${import.meta.env.VITE_API_URL||"https://abhjob-server-production.up.railway.app"}/api/admin/backup`;
+              a.download="";document.body.appendChild(a);a.click();a.remove();
+            }}
+              style={{background:"#2563eb",color:"#fff",border:"none",
+                borderRadius:10,padding:"9px 18px",fontSize:13,cursor:"pointer",
+                fontWeight:700,display:"inline-flex",alignItems:"center",gap:7}}>
+              <Download size={15}/>Бэкап БД (.json)
+            </button>
           </div>
         )}
+
+        {/* Divider + action button */}
+        <div style={{borderTop:"1px solid #f3f4f6",padding:m?"12px 16px":"14px 28px",
+          display:"flex",alignItems:"center",gap:10}}>
+          {!edit?(
+            <button onClick={()=>{setAvatarErr("");setEdit(true);}}
+              style={{background:"#f3f4f6",border:"none",borderRadius:8,
+                padding:"8px 20px",fontSize:14,cursor:"pointer",fontWeight:600,color:"#374151"}}>
+              Редактировать
+            </button>
+          ):(
+            <>
+              <button onClick={save} disabled={saving}
+                style={{flex:1,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",
+                  border:"none",borderRadius:10,padding:"10px",fontSize:14,
+                  cursor:saving?"not-allowed":"pointer",fontWeight:700,opacity:saving?0.7:1}}>
+                {saving?"Сохранение...":"Сохранить"}
+              </button>
+              <button onClick={()=>{setEdit(false);setSaveErr("");setAvatarErr("");}}
+                style={{border:"1px solid #e5e7eb",background:"#fff",borderRadius:10,
+                  padding:"10px 20px",fontSize:14,cursor:"pointer",color:"#374151"}}>
+                Отмена
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Personal data */}
+        <div style={{padding:m?"0 16px 20px":"0 28px 24px"}}>
+          {saved&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,
+            padding:"8px 14px",color:"#16a34a",fontSize:13,fontWeight:600,marginBottom:12,
+            display:"flex",alignItems:"center",gap:7}}>
+            <CheckCircle size={15}/>Данные сохранены
+          </div>}
+          {!edit?(
+            <div>
+              {row("Имя",currentUser.name)}
+              {row("Телефон",currentUser.phone)}
+              {row("Доп. телефон",currentUser.phone2)}
+              {row("Роль",roleLabel)}
+            </div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              <Inp label="Имя и фамилия" value={form.name}
+                onChange={e=>setForm({...form,name:e.target.value})} placeholder="Иван Иванов" required/>
+              <PhoneInp value={form.phone} onChange={v=>setForm({...form,phone:v})} label="Основной телефон"/>
+              <PhoneInp value={form.phone2} onChange={v=>setForm({...form,phone2:v})} label="Доп. телефон"/>
+              {saveErr&&<div style={{fontSize:12,color:"#dc2626"}}>{saveErr}</div>}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Избранное */}
