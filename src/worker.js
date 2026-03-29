@@ -18,6 +18,11 @@ export default {
     }
 
     // Serve static assets for everything else
-    return env.ASSETS.fetch(request);
+    const response = await env.ASSETS.fetch(request);
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set('Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none';"
+    );
+    return new Response(response.body, { status: response.status, headers: newHeaders });
   },
 };
