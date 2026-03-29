@@ -308,6 +308,7 @@ function mapWorker(w){
     travelCities:w.travel_cities||w.travelCities||[],
     photoApproved:w.photo_approved??w.photoApproved??true,
     postedBy:w.posted_by??w.postedBy,
+    portfolioPhotos:w.portfolio_photos||[],
     services:(w.services||[]).map(s=>({
       ...s,
       from:s.from_price??s.from??null,
@@ -1365,6 +1366,8 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
   const [saved,setSaved]=useState(false);
   const [saveErr,setSaveErr]=useState("");
   const [saving,setSaving]=useState(false);
+  const [avatarLoading,setAvatarLoading]=useState(false);
+  const avatarInputRef=useRef(null);
 
   // Admin: pending photo approvals
   const pendingPhotos=workers.filter(w=>w.photo&&!w.photoApproved);
@@ -1424,7 +1427,28 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
               </div>
             )}
           </div>
-          <Avatar name={currentUser.name} photo={null} index={currentUser.id%8} size={60}/>
+          <div style={{position:"relative",cursor:"pointer"}} onClick={()=>avatarInputRef.current?.click()}>
+            <Avatar name={currentUser.name} photo={currentUser.avatar||null} index={currentUser.id%8} size={60}/>
+            <div style={{position:"absolute",bottom:0,right:0,background:"#2563eb",borderRadius:"50%",
+              width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <ImagePlus size={11} color="#fff"/>
+            </div>
+            {avatarLoading&&<div style={{position:"absolute",inset:0,background:"rgba(255,255,255,0.7)",
+              borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>...</div>}
+          </div>
+          <input ref={avatarInputRef} type="file" accept="image/*" style={{display:"none"}}
+            onChange={async e=>{
+              const file=e.target.files?.[0];
+              if(!file)return;
+              setAvatarLoading(true);
+              try{
+                const compressed=await compressImage(file,200,400);
+                const{user}=await api.updateMe({avatar:compressed});
+                setCurrentUser(mapUser(user));
+              }catch{}
+              setAvatarLoading(false);
+              e.target.value="";
+            }}/>
         </div>
       </div>
 
@@ -1512,11 +1536,78 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
         </div>
       )}
 
+      {/* Worker own portfolio */}
+      {currentUser.role==="seeker"&&workers.find(w=>w.postedBy===currentUser.id)&&(
+        <PortfolioSection worker={workers.find(w=>w.postedBy===currentUser.id)} setWorkers={setWorkers} m={m}/>
+      )}
+
       {/* Admin panel */}
       {currentUser.role==="admin"&&(
         <AdminPanel users={users} workers={workers} setWorkers={setWorkers}
           orders={orders} ratings={ratings} m={m}/>
       )}
+    </div>
+  );
+}
+
+function PortfolioSection({worker,setWorkers,m}){
+  const [loading,setLoading]=useState(false);
+  const inputRef=useRef(null);
+  const photos=worker.portfolioPhotos||[];
+
+  const addPhoto=async e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    if(photos.length>=5){e.target.value="";return;}
+    setLoading(true);
+    try{
+      const compressed=await compressImage(file,200,800);
+      const updated=[...photos,compressed];
+      const res=await api.updateWorker(worker.id,{portfolio_photos:updated});
+      setWorkers(prev=>prev.map(w=>w.id===worker.id?mapWorker(res):w));
+    }catch{}
+    setLoading(false);
+    e.target.value="";
+  };
+
+  const removePhoto=async(idx)=>{
+    const updated=photos.filter((_,i)=>i!==idx);
+    try{
+      const res=await api.updateWorker(worker.id,{portfolio_photos:updated});
+      setWorkers(prev=>prev.map(w=>w.id===worker.id?mapWorker(res):w));
+    }catch{}
+  };
+
+  return(
+    <div style={{background:"#fff",borderRadius:16,padding:m?"16px":"24px 28px",
+      boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:12}}>
+      <h3 style={{margin:"0 0 14px",fontSize:16,fontWeight:800,color:"#111"}}>Портфолио</h3>
+      <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+        {photos.map((src,i)=>(
+          <div key={i} style={{position:"relative",width:80,height:80,borderRadius:10,overflow:"hidden",
+            border:"1px solid #e5e7eb",flexShrink:0}}>
+            <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            <button onClick={()=>removePhoto(i)}
+              style={{position:"absolute",top:2,right:2,background:"rgba(0,0,0,0.55)",
+                border:"none",borderRadius:"50%",width:20,height:20,cursor:"pointer",
+                display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+              <X size={11} color="#fff"/>
+            </button>
+          </div>
+        ))}
+        {photos.length<5&&(
+          <button onClick={()=>inputRef.current?.click()}
+            disabled={loading}
+            style={{width:80,height:80,borderRadius:10,border:"2px dashed #d1d5db",
+              background:"#f9fafb",cursor:loading?"not-allowed":"pointer",
+              display:"flex",flexDirection:"column",alignItems:"center",
+              justifyContent:"center",gap:4,color:"#6b7280",fontSize:11,fontWeight:600}}>
+            {loading?"...":<><ImagePlus size={18} color="#9ca3af"/>Добавить</>}
+          </button>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" style={{display:"none"}} onChange={addPhoto}/>
+      <p style={{margin:"10px 0 0",fontSize:11,color:"#9ca3af"}}>Максимум 5 фотографий</p>
     </div>
   );
 }
@@ -2385,6 +2476,19 @@ function WorkerCard({worker,index,onContact,ratings,isFav,onToggleFav}){
       {exp&&worker.about&&(
         <div style={{fontSize:13,color:"#4b5563",background:"#F5F8FB",borderRadius:10,
           padding:"10px 14px",lineHeight:1.6}}>{worker.about}</div>
+      )}
+
+      {/* Portfolio photos */}
+      {worker.portfolioPhotos?.length>0&&(
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:"#6b7280",marginBottom:6}}>Портфолио:</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {worker.portfolioPhotos.map((src,i)=>(
+              <img key={i} src={src} alt="" style={{width:64,height:64,objectFit:"cover",
+                borderRadius:8,border:"1px solid #e5e7eb"}}/>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Actions */}
