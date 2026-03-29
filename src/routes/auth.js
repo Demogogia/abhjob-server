@@ -158,9 +158,17 @@ router.patch('/me', async (req, res, next) => {
       if (sizeKb > 500) return res.status(400).json({ error: 'Фото слишком большое (макс. 500 КБ)' });
     }
 
+    const updates = [];
+    const values = [];
+    let i = 1;
+    if (name !== undefined) { updates.push(`name=$${i++}`); values.push(name.trim()); }
+    if (phone2 !== undefined) { updates.push(`phone2=$${i++}`); values.push(normPhone2 || ''); }
+    if (avatar !== undefined) { updates.push(`avatar=$${i++}`); values.push(avatar); }
+    if (!updates.length) return res.status(400).json({ error: 'Нет полей для обновления' });
+    values.push(payload.id);
     const { rows } = await db.query(
-      'UPDATE users SET name=$1, phone2=$2, avatar=$3 WHERE id=$4 RETURNING id,name,phone,phone2,role,registered_at,avatar',
-      [name?.trim() || '', normPhone2 || '', avatar !== undefined ? avatar : null, payload.id]
+      `UPDATE users SET ${updates.join(',')} WHERE id=$${i} RETURNING id,name,phone,phone2,role,registered_at,avatar`,
+      values
     );
     res.json({ user: rows[0] });
   } catch (e) { next(e); }
