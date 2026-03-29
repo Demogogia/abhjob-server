@@ -4,12 +4,12 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { sendSms, generateCode } = require('../smsc');
 
-const COOKIE_OPTS = {
+const cookieOpts = (rememberMe) => ({
   httpOnly: true,
   sameSite: 'none',
   secure: true,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-};
+  ...(rememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
+});
 
 // Нормализация телефона: 8XXXXXXXXXX → +7XXXXXXXXXX, +7XXXXXXXXXX → без изменений
 function normalizePhone(p) {
@@ -51,7 +51,7 @@ router.post('/sms/send', async (req, res, next) => {
 // Регистрация с SMS-кодом
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, phone: rawPhone, password, role, smsCode } = req.body;
+    const { name, phone: rawPhone, password, role, smsCode, rememberMe } = req.body;
     const phone = normalizePhone(rawPhone);
 
     // Валидация
@@ -88,15 +88,15 @@ router.post('/register', async (req, res, next) => {
     const user = result.rows[0];
     await db.query('DELETE FROM sms_codes WHERE phone=$1', [phone]);
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, COOKIE_OPTS).json({ user });
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '30d' : '1d' });
+    res.cookie('token', token, cookieOpts(rememberMe)).json({ user });
   } catch (e) { next(e); }
 });
 
 // Вход
 router.post('/login', async (req, res, next) => {
   try {
-    const { phone: rawPhone, password } = req.body;
+    const { phone: rawPhone, password, rememberMe } = req.body;
     const phone = normalizePhone(rawPhone);
 
     if (!phone)
@@ -113,9 +113,9 @@ router.post('/login', async (req, res, next) => {
     if (!ok)
       return res.status(400).json({ error: 'Неверный номер или пароль' });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '30d' : '1d' });
     const { password: _, ...safeUser } = user;
-    res.cookie('token', token, COOKIE_OPTS).json({ user: safeUser });
+    res.cookie('token', token, cookieOpts(rememberMe)).json({ user: safeUser });
   } catch (e) { next(e); }
 });
 
