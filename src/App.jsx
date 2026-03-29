@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Component } from "react";
 import * as XLSX from "xlsx";
 import { api } from "./api";
 import {
@@ -9,6 +9,30 @@ import {
   Eye, EyeOff, ArrowLeft, Star, MapPin, Clock, ImagePlus, Check,
   ChevronDown, ChevronUp, Download, Users, Lock, Hammer, Wind, Palmtree, Share2, Heart
 } from "lucide-react";
+
+// ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
+export class ErrorBoundary extends Component{
+  constructor(props){super(props);this.state={error:null};}
+  static getDerivedStateFromError(e){return{error:e};}
+  render(){
+    if(this.state.error){
+      return(
+        <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",gap:16,padding:24,fontFamily:"Nunito,sans-serif"}}>
+          <div style={{fontSize:48}}>⚠️</div>
+          <h2 style={{margin:0,fontSize:20,fontWeight:800,color:"#111827"}}>Что-то пошло не так</h2>
+          <p style={{margin:0,color:"#6b7280",textAlign:"center"}}>Попробуйте обновить страницу</p>
+          <button onClick={()=>window.location.reload()}
+            style={{padding:"10px 24px",background:"#2563eb",color:"#fff",border:"none",
+              borderRadius:10,fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>
+            Обновить
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Генератор уникальных ID
 const uid=()=>crypto.randomUUID();
@@ -236,12 +260,6 @@ const INITIAL_WORKERS = [
     ]},
 ];
 
-const INITIAL_USERS_EXTRA = [
-  {id:1,name:"Алексей Тестов",phone:"+79401234567",email:"",phone2:"",
-   password:"test123",role:"employer",registeredAt:"28.03.2025"},
-];
-const INITIAL_ORDERS   = [];
-const INITIAL_RATINGS  = [];
 
 const COLORS = ["#2563eb","#16a34a","#dc2626","#9333ea","#ea580c","#0891b2","#be185d","#b45309"];
 
@@ -937,6 +955,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
   });
   const [err,setErr]=useState({});
   const [msg,setMsg]=useState("");
+  const [submitting,setSubmitting]=useState(false);
   const [smsCode,setSmsCode]=useState("");
   const [resendTimer,setResendTimer]=useState(0);
 
@@ -977,6 +996,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
     }
     if(Object.keys(e).length){setErr(e);return;}
     setMsg("");
+    setSubmitting(true);
     try{
       await api.sendSms(phone);
       setStep("sms");
@@ -986,7 +1006,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
         setMsg("Этот номер уже зарегистрирован. Попробуйте войти.");
       else
         setMsg(ex.message||"Не удалось отправить SMS. Проверьте номер и попробуйте снова.");
-    }
+    }finally{setSubmitting(false);}
   };
 
   const verifySms=async()=>{
@@ -1272,10 +1292,11 @@ function AuthModal({onAuth,onClose,users,setUsers}){
               <AlertCircle size={15}/>{msg}
             </div>}
 
-            <button onClick={tab==="login"?login:requestSms}
+            <button onClick={tab==="login"?login:requestSms} disabled={submitting}
               style={{background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",borderRadius:10,
-                padding:"13px",fontSize:15,cursor:"pointer",fontWeight:700,marginTop:2}}>
-              {tab==="login"?"Войти →":"Получить код →"}
+                padding:"13px",fontSize:15,cursor:submitting?"not-allowed":"pointer",fontWeight:700,marginTop:2,
+                opacity:submitting?0.7:1}}>
+              {submitting?"Загрузка...":(tab==="login"?"Войти →":"Получить код →")}
             </button>
           </div>
 
@@ -1494,14 +1515,16 @@ function AdminPanel({users,workers,setWorkers,orders,ratings,m}){
   const [tab,setTab]=useState("workers"); // workers | users
   const [editWorker,setEditWorker]=useState(null);
   const [confirmDelete,setConfirmDelete]=useState(null); // {id, name}
+  const {toast,ToastContainer}=useToast();
 
   return(
     <div style={{background:"#fff",borderRadius:16,padding:m?"16px":"24px 28px",
       boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+      <ToastContainer/>
       {confirmDelete&&(
         <ConfirmModal
           message={`Удалить анкету «${confirmDelete.name}»? Это действие нельзя отменить.`}
-          onConfirm={async()=>{try{await api.deleteWorker(confirmDelete.id);}catch{}setWorkers(prev=>prev.filter(x=>x.id!==confirmDelete.id));setConfirmDelete(null);}}
+          onConfirm={async()=>{try{await api.deleteWorker(confirmDelete.id);setWorkers(prev=>prev.filter(x=>x.id!==confirmDelete.id));}catch(e){toast(e.message||"Ошибка при удалении","error");}setConfirmDelete(null);}}
           onCancel={()=>setConfirmDelete(null)}
         />
       )}
@@ -1617,9 +1640,9 @@ function AdminPanel({users,workers,setWorkers,orders,ratings,m}){
                 skills:updated.skills,about:updated.about,
                 verified:updated.verified,approved:updated.approved,photo_approved:updated.photoApproved,
               });
-            }catch{}
-            setWorkers(prev=>prev.map(w=>w.id===updated.id?updated:w));
-            setEditWorker(null);
+              setWorkers(prev=>prev.map(w=>w.id===updated.id?updated:w));
+              setEditWorker(null);
+            }catch(e){toast(e.message||"Ошибка при сохранении","error");}
           }}
           onClose={()=>setEditWorker(null)}/>
       )}
@@ -2207,6 +2230,7 @@ function ContactModal({worker,currentUser,onClose,onOrderCreated,onNeedAuth}){
 
 function WorkerCard({worker,index,onContact,ratings,isFav,onToggleFav}){
   const [exp,setExp]=useState(false);
+  const [copied,setCopied]=useState(false);
   const m=useIsMobile();
   const rating=avgRating(worker.id,ratings);
   const rCount=ratings.filter(r=>r.workerId===worker.id).length;
@@ -2343,12 +2367,12 @@ function WorkerCard({worker,index,onContact,ratings,isFav,onToggleFav}){
         <button onClick={()=>{
           const text=`${worker.name} — ${worker.profession} (${worker.city})\nAbhJob: ${window.location.href}`;
           if(navigator.share){navigator.share({title:worker.name,text});}
-          else{navigator.clipboard.writeText(text).then(()=>alert("Ссылка скопирована!"));}
+          else{navigator.clipboard.writeText(text).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});}
         }} style={{border:"1px solid #e5e7eb",background:"#fff",borderRadius:8,
-          padding:m?"10px 12px":"7px 12px",cursor:"pointer",color:"#6b7280",
-          display:"flex",alignItems:"center",justifyContent:"center",minHeight:44}}
+          padding:m?"10px 12px":"7px 12px",cursor:"pointer",color:copied?"#16a34a":"#6b7280",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:4,minHeight:44}}
           title="Поделиться анкетой">
-          <Share2 size={14}/>
+          {copied?<><Check size={14}/>Скопировано</>:<Share2 size={14}/>}
         </button>
         <button onClick={()=>onContact(worker)} style={{
           flex:1,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",borderRadius:8,
@@ -2592,11 +2616,13 @@ const SORT_OPTIONS=[
 function CatalogPage({workers,ratings,onContact,initialSearch="",favorites=[],onToggleFav}){
   const m=useIsMobile();
   const [search,setSearch]=useState(initialSearch);
+  const [debouncedSearch,setDebouncedSearch]=useState(initialSearch);
   const [sorts,setSorts]=useState([]);
   const [cityFilters,setCityFilters]=useState([]);
   const [cityOpen,setCityOpen]=useState(false);
   const cityRef=useRef(null);
   const [loading,setLoading]=useState(true);
+  useEffect(()=>{const t=setTimeout(()=>setDebouncedSearch(search),300);return()=>clearTimeout(t);},[search]);
   useEffect(()=>{
     const handler=e=>{if(cityRef.current&&!cityRef.current.contains(e.target))setCityOpen(false);};
     document.addEventListener("mousedown",handler);
@@ -2622,7 +2648,7 @@ function CatalogPage({workers,ratings,onContact,initialSearch="",favorites=[],on
 
   const filtered=workers.filter(w=>{
     if(cityFilters.length>0&&!cityFilters.some(c=>w.city===c||(w.travelCities||[]).includes(c)))return false;
-    const q=search.toLowerCase().trim();
+    const q=debouncedSearch.toLowerCase().trim();
     if(!q)return true;
     return [w.name,w.profession,w.skills||"",w.city,w.category||"",w.about||"",
       ...(w.travelCities||[]),
