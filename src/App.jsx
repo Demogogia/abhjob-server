@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, Component } from "react";
-import * as XLSX from "xlsx";
 import { api } from "./api";
 import {
   Bike, HardHat, Truck, Sparkles, Monitor, Camera, Code2, Wrench,
@@ -381,7 +380,8 @@ function expYears(str){
   const m=(str||"").match(/\d+/);
   return m?parseInt(m[0]):0;
 }
-function exportToExcel(users,workers,orders){
+async function exportToExcel(users,workers,orders){
+  const XLSX=await import("xlsx");
   const wb=XLSX.utils.book_new();
   const clientRows=users.filter(u=>u.role==="employer"||u.role==="admin").map(u=>{
     const myOrders=orders.filter(o=>o.employerId===u.id);
@@ -962,6 +962,7 @@ function AuthModal({onAuth,onClose,users,setUsers}){
   const [resendTimer,setResendTimer]=useState(0);
 
   const timerRef=useRef(null);
+  useEffect(()=>()=>{if(timerRef.current)clearInterval(timerRef.current);},[]);
   const startTimer=()=>{
     if(timerRef.current)clearInterval(timerRef.current);
     setResendTimer(60);
@@ -1367,6 +1368,7 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
   const [form,setForm]=useState({name:currentUser.name,phone:currentUser.phone,phone2:currentUser.phone2||""});
   const [saved,setSaved]=useState(false);
   const [saveErr,setSaveErr]=useState("");
+  const [saving,setSaving]=useState(false);
 
   // Admin: pending photo approvals
   const pendingPhotos=workers.filter(w=>w.photo&&!w.photoApproved);
@@ -1374,7 +1376,7 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
 
   const save=async()=>{
     if(checkText(form.name)){setSaveErr("Недопустимые слова в имени");return;}
-    setSaveErr("");
+    setSaveErr("");setSaving(true);
     try{
       const{user}=await api.updateMe({name:form.name,phone2:form.phone2});
       const u=mapUser(user);
@@ -1382,7 +1384,7 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
       setEdit(false);setSaved(true);setTimeout(()=>setSaved(false),2500);
     }catch(e){
       setSaveErr(e.message||"Ошибка сохранения");
-    }
+    }finally{setSaving(false);}
   };
 
   const row=(label,val)=>(
@@ -1450,9 +1452,9 @@ function CabinetPage({currentUser,setCurrentUser,users,setUsers,workers,setWorke
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>{setEdit(false);setSaveErr("");}} style={{flex:1,border:"1px solid #e5e7eb",
                 background:"#fff",borderRadius:10,padding:"10px",fontSize:14,cursor:"pointer"}}>Отмена</button>
-              <button onClick={save} style={{flex:2,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",
-                borderRadius:10,padding:"10px",fontSize:14,cursor:"pointer",fontWeight:700}}>
-                Сохранить
+              <button onClick={save} disabled={saving} style={{flex:2,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",
+                borderRadius:10,padding:"10px",fontSize:14,cursor:saving?"not-allowed":"pointer",fontWeight:700,opacity:saving?0.7:1}}>
+                {saving?"Сохранение...":"Сохранить"}
               </button>
             </div>
           </div>
