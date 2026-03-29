@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, Component } from "react";
 import { api } from "./api";
 import {
-  Bike, HardHat, Truck, Sparkles, Monitor, Camera, Code2, Wrench,
+  Bike, Truck, Monitor, Camera, Code2, Wrench,
   PartyPopper, Palette, Bot, Smartphone, Scissors, Scale, Car, GraduationCap,
   User, Search, ClipboardList, FileText, HelpCircle, LogOut, Menu, X,
-  Phone, Shield, CheckCircle, Briefcase, Building2, AlertCircle,
+  Phone, Shield, CheckCircle, Building2, AlertCircle,
   Eye, EyeOff, ArrowLeft, Star, MapPin, Clock, ImagePlus, Check,
-  ChevronDown, ChevronUp, Download, Users, Lock, Hammer, Wind, Palmtree, Share2, Heart
+  ChevronDown, ChevronUp, Download, Users, Lock, Hammer, Palmtree, Share2, Heart
 } from "lucide-react";
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
@@ -1033,7 +1033,8 @@ function AuthModal({onAuth,onClose,users,setUsers}){
         try{
           const wRes=await api.createWorker(workerBody);
           onAuth(u,mapWorker(wRes));
-        }catch{
+        }catch(ex){
+          setMsg(ex.message||"Анкета не создана. Добавьте её позже в личном кабинете.");
           onAuth(u);
         }
         return;
@@ -1735,13 +1736,16 @@ function AdminWorkerEdit({worker,onSave,onClose}){
 
 function CompleteOrderButton({order,orders,setOrders,m}){
   const [loading,setLoading]=useState(false);
+  const {toast,ToastContainer}=useToast();
   return(
+    <>
+    <ToastContainer/>
     <button onClick={async()=>{
       setLoading(true);
       try{
         await api.completeOrder(order.id);
         setOrders(orders.map(o=>o.id===order.id?{...o,status:"completed",completedAt:new Date().toLocaleDateString("ru")}:o));
-      }catch{}
+      }catch(e){toast(e.message||"Ошибка при обновлении заказа","error");}
       setLoading(false);
     }} disabled={loading}
       style={{background:"#16a34a",color:"#fff",border:"none",borderRadius:8,
@@ -1749,6 +1753,7 @@ function CompleteOrderButton({order,orders,setOrders,m}){
         minHeight:44,width:m?"100%":undefined,opacity:loading?0.7:1}}>
       {loading?"Сохранение...":"Отметить выполненным"}
     </button>
+    </>
   );
 }
 
@@ -1809,7 +1814,7 @@ function OrdersPage({currentUser,orders,setOrders,ratings}){
                     </div>
                   )}
                 </div>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                <div style={{display:"flex",justifyContent:"space-between",
                   flexDirection:m?"column":"row",gap:m?8:0,alignItems:m?"flex-start":"center"}}>
                   <span style={{fontSize:12,color:"#9ca3af"}}>
                     Создан: {order.createdAt}
@@ -2926,14 +2931,12 @@ export default function App(){
     setShowAuth(false);
     setPage("home");
     if(pendingWorker)setWorkers(prev=>[pendingWorker,...prev]);
-    try{
-      const oRes=await api.getOrders().catch(()=>[]);
-      setOrders(oRes.map(mapOrder));
-      if(user.role==="admin"){
-        const uRes=await api.getUsers().catch(()=>[]);
-        setUsers(uRes.map(mapUser));
-      }
-    }catch{}
+    const oRes=await api.getOrders().catch(()=>[]);
+    setOrders(oRes.map(mapOrder));
+    if(user.role==="admin"){
+      const uRes=await api.getUsers().catch(()=>[]);
+      setUsers(uRes.map(mapUser));
+    }
   };
   const handleLogout=()=>{
     api.logout().catch(()=>{});
