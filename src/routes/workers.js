@@ -89,7 +89,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: 'Нет доступа' });
 
     // Поля которые может менять владелец
-    const userFields = ['name', 'profession', 'city', 'experience', 'salary', 'salary_num', 'skills', 'about', 'photo'];
+    const userFields = ['name', 'profession', 'city', 'experience', 'salary', 'salary_num', 'skills', 'about', 'photo', 'portfolio_photos'];
     // Поля только для админа
     const adminFields = ['verified', 'approved', 'photo_approved'];
 

@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS sms_codes (
   expires_at TIMESTAMP NOT NULL
 );
 
+-- Миграции (добавляются если колонки не существуют)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS portfolio_photos TEXT[] DEFAULT '{}';
+
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_workers_city ON workers(city);
 CREATE INDEX IF NOT EXISTS idx_orders_employer ON orders(employer_id);

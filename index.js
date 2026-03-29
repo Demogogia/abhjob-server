@@ -75,5 +75,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Внутренняя ошибка сервера' });
 });
 
+const db = require('./src/db');
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`AbhJob server running on port ${PORT}`));
+
+async function start() {
+  // Авто-миграции
+  await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT');
+  await db.query("ALTER TABLE workers ADD COLUMN IF NOT EXISTS portfolio_photos TEXT[] DEFAULT '{}'");
+  app.listen(PORT, () => console.log(`AbhJob server running on port ${PORT}`));
+}
+start().catch(e => { console.error('Startup error:', e.message); process.exit(1); });

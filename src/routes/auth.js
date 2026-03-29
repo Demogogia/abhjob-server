@@ -126,7 +126,7 @@ router.get('/me', async (req, res) => {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const { rows } = await db.query(
-      'SELECT id,name,phone,phone2,role,registered_at FROM users WHERE id=$1',
+      'SELECT id,name,phone,phone2,role,registered_at,avatar FROM users WHERE id=$1',
       [payload.id]
     );
     res.json({ user: rows[0] || null });
@@ -147,16 +147,20 @@ router.patch('/me', async (req, res, next) => {
     if (!token) return res.status(401).json({ error: 'Не авторизован' });
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
-    const { name, phone2 } = req.body;
+    const { name, phone2, avatar } = req.body;
     if (name !== undefined && (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 100))
       return res.status(400).json({ error: 'Имя должно содержать от 2 до 100 символов' });
     const normPhone2 = phone2 !== undefined && phone2 !== '' ? normalizePhone(phone2) : '';
     if (phone2 !== undefined && phone2 !== '' && !normPhone2)
       return res.status(400).json({ error: 'Неверный формат доп. телефона' });
+    if (avatar !== undefined && avatar !== null) {
+      const sizeKb = (avatar.length * 3 / 4) / 1024;
+      if (sizeKb > 500) return res.status(400).json({ error: 'Фото слишком большое (макс. 500 КБ)' });
+    }
 
     const { rows } = await db.query(
-      'UPDATE users SET name=$1, phone2=$2 WHERE id=$3 RETURNING id,name,phone,phone2,role,registered_at',
-      [name?.trim() || '', normPhone2 || '', payload.id]
+      'UPDATE users SET name=$1, phone2=$2, avatar=$3 WHERE id=$4 RETURNING id,name,phone,phone2,role,registered_at,avatar',
+      [name?.trim() || '', normPhone2 || '', avatar !== undefined ? avatar : null, payload.id]
     );
     res.json({ user: rows[0] });
   } catch (e) { next(e); }
