@@ -1,4 +1,5 @@
 const https = require('https');
+const crypto = require('crypto');
 require('dotenv').config();
 
 function sendSms(phone, message) {
@@ -37,7 +38,7 @@ function sendSms(phone, message) {
 }
 
 function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000)); // 6 цифр
+  return String(crypto.randomInt(100000, 1000000)); // 6 цифр, криптографически безопасно
 }
 
 module.exports = { sendSms, generateCode };

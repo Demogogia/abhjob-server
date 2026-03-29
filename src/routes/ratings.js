@@ -32,6 +32,14 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (!score || score < 1 || score > 5)
       return res.status(400).json({ error: 'Оценка должна быть от 1 до 5' });
 
+    // Проверяем что заказ существует, завершён и принадлежит этому работодателю и работнику
+    const order = await db.query(
+      `SELECT * FROM orders WHERE id=$1 AND employer_id=$2 AND worker_id=$3 AND status='completed'`,
+      [order_id, employer_id, worker_id]
+    );
+    if (!order.rows.length)
+      return res.status(400).json({ error: 'Заказ не найден или ещё не завершён' });
+
     const dup = await db.query(
       'SELECT id FROM ratings WHERE order_id=$1 AND employer_id=$2',
       [order_id, employer_id]

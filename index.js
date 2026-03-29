@@ -82,6 +82,7 @@ async function start() {
   // Авто-миграции
   await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT');
   await db.query("ALTER TABLE workers ADD COLUMN IF NOT EXISTS portfolio_photos TEXT[] DEFAULT '{}'");
+  await db.query('CREATE INDEX IF NOT EXISTS idx_workers_approved ON workers(approved)');
   app.listen(PORT, () => console.log(`AbhJob server running on port ${PORT}`));
 }
 start().catch(e => { console.error('Startup error:', e.message); process.exit(1); });

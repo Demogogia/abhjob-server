@@ -137,7 +137,7 @@ router.get('/me', async (req, res) => {
 
 // Выход
 router.post('/logout', (req, res) => {
-  res.clearCookie('token').json({ ok: true });
+  res.clearCookie('token', { httpOnly: true, sameSite: 'none', secure: true }).json({ ok: true });
 });
 
 // Обновить профиль

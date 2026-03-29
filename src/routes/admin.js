@@ -42,7 +42,7 @@ router.patch('/workers/:id/verify', requireAdmin, async (req, res, next) => {
 router.get('/backup', requireAdmin, async (req, res, next) => {
   try {
     const [users, workers, services, orders, ratings] = await Promise.all([
-      db.query('SELECT * FROM users ORDER BY id'),
+      db.query('SELECT id,name,phone,phone2,role,registered_at,avatar FROM users ORDER BY id'),
       db.query('SELECT * FROM workers ORDER BY id'),
       db.query('SELECT * FROM services ORDER BY id'),
       db.query('SELECT * FROM orders ORDER BY id'),

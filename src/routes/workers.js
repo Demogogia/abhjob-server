@@ -88,6 +88,21 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
     if (!isAdmin && !isOwner)
       return res.status(403).json({ error: 'Нет доступа' });
 
+    // Валидация portfolio_photos
+    if (req.body.portfolio_photos !== undefined) {
+      const pp = req.body.portfolio_photos;
+      if (!Array.isArray(pp))
+        return res.status(400).json({ error: 'portfolio_photos должен быть массивом' });
+      if (pp.length > 10)
+        return res.status(400).json({ error: 'Максимум 10 фото в портфолио' });
+      for (const p of pp) {
+        if (typeof p !== 'string' || !p.startsWith('data:image/'))
+          return res.status(400).json({ error: 'Неверный формат фото в портфолио' });
+        if ((p.length * 3 / 4) / 1024 > 2048)
+          return res.status(400).json({ error: 'Фото в портфолио не должно превышать 2 МБ' });
+      }
+    }
+
     // Поля которые может менять владелец
     const userFields = ['name', 'profession', 'city', 'experience', 'salary', 'salary_num', 'skills', 'about', 'photo', 'portfolio_photos'];
     // Поля только для админа

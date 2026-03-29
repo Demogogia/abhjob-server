@@ -81,5 +81,6 @@ ALTER TABLE workers ADD COLUMN IF NOT EXISTS portfolio_photos TEXT[] DEFAULT '{}
 
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_workers_city ON workers(city);
+CREATE INDEX IF NOT EXISTS idx_workers_approved ON workers(approved);
 CREATE INDEX IF NOT EXISTS idx_orders_employer ON orders(employer_id);
 CREATE INDEX IF NOT EXISTS idx_ratings_worker ON ratings(worker_id);
