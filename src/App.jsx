@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Component } from "react";
+import React, { useState, useEffect, useRef, useMemo, Component } from "react";
 import * as XLSX from "xlsx";
 import { api } from "./api";
 import {
@@ -540,6 +540,7 @@ function CityPicker({selected,onChange}){
   );
 }
 function ConfirmModal({message,onConfirm,onCancel}){
+  const [loading,setLoading]=useState(false);
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(2px)",
       display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,padding:16}}>
@@ -548,13 +549,14 @@ function ConfirmModal({message,onConfirm,onCancel}){
         <div style={{fontSize:16,fontWeight:700,color:"#111827",marginBottom:8}}>Подтверждение</div>
         <div style={{fontSize:14,color:"#6b7280",marginBottom:24,lineHeight:1.5}}>{message}</div>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-          <button onClick={onCancel} style={{background:"#f3f4f6",border:"none",borderRadius:10,
-            padding:"9px 20px",fontSize:13,fontWeight:600,color:"#374151",cursor:"pointer"}}>
+          <button onClick={onCancel} disabled={loading} style={{background:"#f3f4f6",border:"none",borderRadius:10,
+            padding:"9px 20px",fontSize:13,fontWeight:600,color:"#374151",cursor:loading?"not-allowed":"pointer",opacity:loading?0.6:1}}>
             Отмена
           </button>
-          <button onClick={onConfirm} style={{background:"#dc2626",border:"none",borderRadius:10,
-            padding:"9px 20px",fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer"}}>
-            Удалить
+          <button onClick={async()=>{setLoading(true);await onConfirm();}} disabled={loading}
+            style={{background:"#dc2626",border:"none",borderRadius:10,
+            padding:"9px 20px",fontSize:13,fontWeight:600,color:"#fff",cursor:loading?"not-allowed":"pointer",opacity:loading?0.7:1}}>
+            {loading?"Удаление...":"Удалить"}
           </button>
         </div>
       </div>
@@ -1729,6 +1731,25 @@ function AdminWorkerEdit({worker,onSave,onClose}){
 
 // ─── ORDERS PAGE ──────────────────────────────────────────────────────────────
 
+function CompleteOrderButton({order,orders,setOrders,m}){
+  const [loading,setLoading]=useState(false);
+  return(
+    <button onClick={async()=>{
+      setLoading(true);
+      try{
+        await api.completeOrder(order.id);
+        setOrders(orders.map(o=>o.id===order.id?{...o,status:"completed",completedAt:new Date().toLocaleDateString("ru")}:o));
+      }catch{}
+      setLoading(false);
+    }} disabled={loading}
+      style={{background:"#16a34a",color:"#fff",border:"none",borderRadius:8,
+        padding:"10px 16px",fontSize:13,cursor:loading?"not-allowed":"pointer",fontWeight:600,
+        minHeight:44,width:m?"100%":undefined,opacity:loading?0.7:1}}>
+      {loading?"Сохранение...":"Отметить выполненным"}
+    </button>
+  );
+}
+
 function OrdersPage({currentUser,orders,setOrders,ratings}){
   const m=useIsMobile();
   // Orders are already filtered by the API for the current user
@@ -1793,12 +1814,7 @@ function OrdersPage({currentUser,orders,setOrders,ratings}){
                     {order.completedAt&&` · Выполнен: ${order.completedAt}`}
                   </span>
                   {order.status==="active"&&currentUser.role==="employer"&&(
-                    <button onClick={async()=>{try{await api.completeOrder(order.id);}catch{}setOrders(orders.map(o=>o.id===order.id?{...o,status:"completed",completedAt:new Date().toLocaleDateString("ru")}:o));}}
-                      style={{background:"#16a34a",color:"#fff",border:"none",borderRadius:8,
-                        padding:"10px 16px",fontSize:13,cursor:"pointer",fontWeight:600,
-                        minHeight:44,width:m?"100%":undefined}}>
-                      Отметить выполненным
-                    </button>
+                    <CompleteOrderButton order={order} orders={orders} setOrders={setOrders} m={m}/>
                   )}
                 </div>
               </div>
@@ -2024,6 +2040,7 @@ function WorkerForm({onClose,onAdd,currentUser}){
     phone:currentUser.phone||"+7940",email:"",photo:null,services:[],
   });
   const [err,setErr]=useState({});
+  const [submitting,setSubmitting]=useState(false);
   const upd=k=>v=>{setF({...f,[k]:v});setErr({...err,[k]:""});};
 
   const submit=async()=>{
@@ -2040,6 +2057,7 @@ function WorkerForm({onClose,onAdd,currentUser}){
     if(!f.phone.trim())e.phone="Введите телефон";
     if(Object.keys(e).length){setErr(e);return;}
     const salaryNum=parseInt((f.salary||"").replace(/\D/g,""))||0;
+    setSubmitting(true);
     try{
       const wRes=await api.createWorker({
         name:f.name,phone:f.phone,category:f.category,profession:f.profession,
@@ -2052,7 +2070,7 @@ function WorkerForm({onClose,onAdd,currentUser}){
       onAdd(mapWorker(wRes));
     }catch(ex){
       setErr({name:ex.message||"Ошибка создания анкеты"});
-    }
+    }finally{setSubmitting(false);}
   };
 
   return(
@@ -2144,9 +2162,9 @@ function WorkerForm({onClose,onAdd,currentUser}){
           borderRadius:10,padding:"11px",fontSize:14,cursor:"pointer",color:"#374151"}}>
           Отмена
         </button>
-        <button onClick={submit} style={{flex:2,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",
-          borderRadius:10,padding:"11px",fontSize:14,cursor:"pointer",fontWeight:700}}>
-          Разместить анкету
+        <button onClick={submit} disabled={submitting} style={{flex:2,background:"linear-gradient(to top right,#0c4a6e,#38bdf8)",color:"#fff",border:"none",
+          borderRadius:10,padding:"11px",fontSize:14,cursor:submitting?"not-allowed":"pointer",fontWeight:700,opacity:submitting?0.7:1}}>
+          {submitting?"Сохранение...":"Разместить анкету"}
         </button>
       </div>
     </Overlay>
@@ -2646,7 +2664,7 @@ function CatalogPage({workers,ratings,onContact,initialSearch="",favorites=[],on
 
   const toggleCity=city=>setCityFilters(prev=>prev.includes(city)?prev.filter(c=>c!==city):[...prev,city]);
 
-  const filtered=workers.filter(w=>{
+  const filtered=useMemo(()=>workers.filter(w=>{
     if(cityFilters.length>0&&!cityFilters.some(c=>w.city===c||(w.travelCities||[]).includes(c)))return false;
     const q=debouncedSearch.toLowerCase().trim();
     if(!q)return true;
@@ -2654,20 +2672,20 @@ function CatalogPage({workers,ratings,onContact,initialSearch="",favorites=[],on
       ...(w.travelCities||[]),
       ...(w.services||[]).map(s=>s.name)]
       .some(v=>v.toLowerCase().includes(q));
-  });
+  }),[workers,cityFilters,debouncedSearch]);
 
-  const sorted=[...filtered].sort((a,b)=>{
+  const sorted=useMemo(()=>[...filtered].sort((a,b)=>{
     for(const {key,dir} of sorts){
-      const m=dir==="desc"?1:-1;
+      const mul=dir==="desc"?1:-1;
       let d=0;
-      if(key==="rating"){const ra=avgRating(a.id,ratings)??-1,rb=avgRating(b.id,ratings)??-1;d=(rb-ra)*m;}
-      else if(key==="salary")d=((b.salaryNum||0)-(a.salaryNum||0))*m;
-      else if(key==="age")d=((b.age||0)-(a.age||0))*m;
-      else if(key==="exp")d=(expYears(b.experience)-expYears(a.experience))*m;
+      if(key==="rating"){const ra=avgRating(a.id,ratings)??-1,rb=avgRating(b.id,ratings)??-1;d=(rb-ra)*mul;}
+      else if(key==="salary")d=((b.salaryNum||0)-(a.salaryNum||0))*mul;
+      else if(key==="age")d=((b.age||0)-(a.age||0))*mul;
+      else if(key==="exp")d=(expYears(b.experience)-expYears(a.experience))*mul;
       if(d!==0)return d;
     }
     return 0;
-  });
+  }),[filtered,sorts,ratings]);
 
   return(
     <div style={{maxWidth:1080,margin:"0 auto",padding:m?"14px":"32px 16px"}}>
